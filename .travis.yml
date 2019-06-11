@@ -1,0 +1,35 @@
+os:
+  - linux
+
+language: java
+jdk:
+  - oraclejdk8
+sudo: false
+git:
+  submodules: false
+
+## ----------------------------------------------------------------------
+## Build tools
+## ----------------------------------------------------------------------
+
+
+## ----------------------------------------------------------------------
+## Perform build:
+## ----------------------------------------------------------------------
+
+script:
+
+  - mvn clean install -DtestSourceDirectory=src/test/scala/org/datasyslab/samplingcube
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+
+## ----------------------------------------------------------------------
+## Notification
+## ----------------------------------------------------------------------
+notifications:
+  email:
+    recipients:
+      - jiayu2@asu.edu
+    on_success: none
+    on_failure: always
