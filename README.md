@@ -1,9 +1,15 @@
 # Tabula: Accelerating Spatial Data Visualization Dashboards via a Materialized Sampling Approach
 
+[![Build Status](https://travis-ci.org/DataSystemsLab/Tabula.svg?branch=master)](https://travis-ci.org/DataSystemsLab/Tabula)
 
 ## Spatial data visualization dashboard
 
+<img src="figures/tableau-dashboard.png" width="500">
+
 A user visually explores a spatial dataset using a visualization dashboard (Figure 1), such as Tableau and ArcGIS. Each user interaction with the dashboard often involves an iteration between the dashboard and underlying data system. In each iteration, the dashboard application ﬁrst issues a query to extract the data of interest from the underlying data system (e.g., PostGIS and SparkSQL), and then runs the visual analysis task (e.g., heat map and statistical analysis) on the selected data. Based on the visualization result, the user may iteratively go through such steps several times to visually explore various subsets of the database.
+
+<img src="figures/tableau-interaction.gif" width="300">
+
 
 ## What is Tabula
 
@@ -58,9 +64,9 @@ WHERE Trip_distance = 1 AND Payment_method = 'cash'
 ## Implementation details
 
 1. Currently, Tabula is implemented on top of Apache SparkSQL 2.3. In the future, we will show how to extend Tabula to more data systems such as PostgreSQL.
-2. The current code contains a geospatial-visualization aware accuracy loss function as an example at this location: /src/main/scala/org/datasyslab/samplingcube/cubes/Tabula
+2. The current code contains a geospatial-visualization aware accuracy loss function as an example at this location: [Tabula cube](https://github.com/DataSystemsLab/Tabula/blob/master/src/main/scala/org/datasyslab/samplingcube/cubes/Tabula.scala)
 3. We will soon release more examples about how to write user-defined accuracy loss functions in Tabula. Stay tuned.
-4. Some compared approaches are provided here: /src/main/scala/org/datasyslab/samplingcube/relatedwork
+4. Some compared approaches are provided here: [Related work](https://github.com/DataSystemsLab/Tabula/tree/master/src/main/scala/org/datasyslab/samplingcube/relatedwork)
 5. We also compare with SnappyData in this repository: [SnappyData VS Tabula](https://github.com/jiayuasu/snappydata-versus-tabula)
 
 ## Contributors
