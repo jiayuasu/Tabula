@@ -4,8 +4,7 @@
 
 ## Spatial data visualization dashboard
 
-<img src="figures/tableau-dashboard.png" width="300">
-<img src="figures/tableau-interaction.gif" width="300">
+<img style="float: left;" src="figures/tableau-dashboard.png" width="400"><img src="figures/tableau-interaction.gif" width="400">
 
 A user visually explores a spatial dataset using a visualization dashboard, such as Tableau and ArcGIS. Each user interaction with the dashboard often involves an iteration between the dashboard and underlying data system. In each iteration, the dashboard application ﬁrst issues a query to extract the data of interest from the underlying data system (e.g., PostGIS and SparkSQL), and then runs the visual analysis task (e.g., heat map and statistical analysis) on the selected data. Based on the visualization result, the user may iteratively go through such steps several times to visually explore various subsets of the database.
 
