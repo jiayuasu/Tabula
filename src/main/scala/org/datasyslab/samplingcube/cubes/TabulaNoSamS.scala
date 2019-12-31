@@ -17,10 +17,12 @@ package org.datasyslab.samplingcube.cubes
 
 import java.util.Calendar
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, SaveMode, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.datasyslab.samplingcube.algorithms.FindCombinations
+import org.datasyslab.samplingcube.utils.SimplePoint
 
 class TabulaNoSamS(sparkSession: SparkSession, inputTableName: String, totalCount: Long)
   extends Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Long) {
@@ -33,7 +35,7 @@ class TabulaNoSamS(sparkSession: SparkSession, inputTableName: String, totalCoun
     * @return
     */
   def buildCubeNoSamS(cubedAttributes: Seq[String], sampledAttribute: String, qualityAttribute: String, icebergThresholds: Seq[Double], cubeTableLocation: String, predicateDf:DataFrame
-               ,payload:String): DataFrame = {
+               ,payload:String): Tuple2[DataFrame, RDD[SimplePoint]] = {
     lastDryRunEndTime = 0
     lastRealRunEndTime = 0
     this.globalSample = drawGlobalSample(sampledAttribute, qualityAttribute, icebergThresholds(0))
@@ -105,6 +107,6 @@ class TabulaNoSamS(sparkSession: SparkSession, inputTableName: String, totalCoun
 
     realRunResultDf = realRunResultDf.drop(col(s"${cubeLocalMeasureName}1"))
 
-    return realRunResultDf.withColumn(payloadColName,lit(""))
+    return (realRunResultDf.withColumn(payloadColName,lit("")), sparkSession.table(tempTableNameGLobalSample).rdd.map(f => f.getAs[SimplePoint](0)))
   }
 }

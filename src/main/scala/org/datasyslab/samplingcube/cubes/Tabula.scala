@@ -18,11 +18,13 @@ package org.datasyslab.samplingcube.cubes
 import java.util
 import java.util.Calendar
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SaveMode, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.datasyslab.samplingcube.algorithms.{FindCombinations, MinimumDominatingSet}
+import org.datasyslab.samplingcube.utils.SimplePoint
 
 import scala.collection.JavaConverters._
 
@@ -39,7 +41,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
     * @return
     */
   def buildCube(cubedAttributes: Seq[String], sampledAttribute: String, qualityAttribute: String, icebergThresholds: Seq[Double], cubeTableLocation: String, predicateDf:DataFrame
-               ,payload:String): Tuple2[DataFrame, DataFrame] = {
+               ,payload:String): Tuple3[DataFrame, DataFrame, RDD[SimplePoint]] = {
     lastDryRunEndTime = 0
     lastRealRunEndTime = 0
     this.globalSample = drawGlobalSample(sampledAttribute, qualityAttribute, icebergThresholds(0))
@@ -135,7 +137,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
 
     logger.info(cubeLogPrefix + "final sample table count " + sampleTable.count())
 
-    return (cubeTable, sampleTable)//.withColumn(cubeSampleColName, stringify(col(cubeSampleColName))))
+    return (cubeTable, sampleTable, sparkSession.table(tempTableNameGLobalSample).rdd.map(f => f.getAs[SimplePoint](0)))//.withColumn(cubeSampleColName, stringify(col(cubeSampleColName))))
   }
 
 
@@ -163,30 +165,6 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
       """.stripMargin)
     val edges = MinimumDominatingSet.GreedyAlgorithm(sampleGraph.collect()).toList.asJava
     return edges
-  }
-
-  /**
-    * Search the cube
-    *
-    * @param cubedAttributes
-    * @param attributeValues
-    * @return
-    */
-  def searchCube(inputCubeTable: DataFrame, cubedAttributes: Seq[String], attributeValues: Seq[String], sampleTable: DataFrame): String = {
-    var cubeTable = filterDataframe(inputCubeTable, cubedAttributes, attributeValues, true)
-    //cubeTable = cubeTable.select(cubeSampleColName)
-    val sample = cubeTable.limit(1).join(sampleTable, expr(s"$repre_id_prefix$cubeTableIdName = $cubeTableIdName")).select(cubeSampleColName).take(1)
-
-    // Validate the query result. cube search doesn't support rollup for now, return the first iceberg cell
-    if (sample.size == 0 || sample(0).getAs[Seq[Double]](cubeSampleColName) == null) {
-      logger.info(cubeLogPrefix + "cube search return the global sample")
-      return globalSample.deep.mkString(",")
-    }
-    else {
-      logger.info(cubeLogPrefix + "cube search return an iceberg cell local sample")
-      var icebergSample = sample(0).getAs[String](cubeSampleColName) //.toArray.map(_.toString)
-      return icebergSample
-    }
   }
 
   def dryrunWithEuclidean(cubedAttributes: Seq[String], sampledAttribute: String, qualityAttribute: String, icebergThresholds: Seq[Double]): DataFrame = {

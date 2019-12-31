@@ -21,6 +21,11 @@ import org.apache.spark.sql.functions._
 import org.datasyslab.samplingcube.GlobalVariables
 
 trait CommonFunctions extends GlobalVariables with SerializableUdf {
+  val stringify = udf((vs: Seq[String]) => vs match {
+    case null => null
+    case _ => s"""${vs.mkString(",")}"""
+  })
+
   val logger: Logger = LogManager.getLogger(classOf[CommonFunctions])
 
   /**

@@ -35,6 +35,7 @@ trait testSettings extends FunSpec with BeforeAndAfterAll with CommonFunctions{
   //val nyctaxiInputLocation = "/hdd/data/nyc-geometry-nonull/yellow_tripdata_2009*.csv"
   val cubeTableOutputLocation = System.getProperty("user.dir") + "/target/cubetable"
   val sampleTableOutputLocation = System.getProperty("user.dir") + "/target/sampletable"
+  val globalSamTableOutputLocation = System.getProperty("user.dir") + "/target/globalsamtable"
   val fligtInputLocation = resourceFolder + "flights-small.csv"
   val tpchLineItemLocation = resourceFolder + "tpch-lineitem-small.tbl"
   val workloadSize = 10

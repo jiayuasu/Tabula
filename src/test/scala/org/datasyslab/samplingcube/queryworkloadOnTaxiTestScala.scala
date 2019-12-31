@@ -17,11 +17,13 @@ package org.datasyslab.samplingcube
 
 import java.util.Calendar
 
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.storage.StorageLevel
-import org.datasyslab.samplingcube.cubes.{SamplingCube, SamplingIcebergCube, TabulaNoSamS, Tabula}
+import org.datasyslab.samplingcube.cubes._
 import org.datasyslab.samplingcube.datapreparation.PrepTaxiData
 import org.datasyslab.samplingcube.relatedwork.{SampleFirst, SampleLater}
+import org.datasyslab.samplingcube.utils.SimplePoint
 
 //import org.datasyslab.samplingcube._
 class queryworkloadOnTaxiTestScala extends testSettings {
@@ -99,20 +101,29 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       // Generate approximate 10 queries
       val queryWorkload = dataprep.generateQueryWorkload(workloadSize)
 
-      var factory = new SamplingCube(spark, rawTableName, dataprep.totalCount)
+      var cubeFactory = new SamplingCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
 
-      var cubeTable = factory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
-      cubeTable.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
-      cubeTable = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableOutputLocation)
-      cubeTable = cubeTable.persist(StorageLevel.MEMORY_AND_DISK_SER)
-      println(cubeTable.count())
+      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
+      val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+      val outPutPath = new Path(globalSamTableOutputLocation)
+      if (fs.exists(outPutPath)) fs.delete(outPutPath, true)
+      twoTables._2.saveAsObjectFile(globalSamTableOutputLocation)
 
+      var cubeDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableOutputLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      var globalSamRdd = spark.sparkContext.objectFile[SimplePoint](globalSamTableOutputLocation)
+
+      println(cubeFactory.globalSample.deep.mkString(", "))
+      println("all cells: " + cubeDf.count())
+      cubeDf.show()
+
+      val cubeLoader = new CubeLoader(Seq(cubeDf), globalSamRdd)
       var elapsedTime: Long = 0
       var loss = 0.0
       queryWorkload.foreach(f => {
         var startingTime = Calendar.getInstance().getTimeInMillis
-        var sample = factory.searchCube(cubeTable, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])
+        var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
         loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
@@ -132,22 +143,27 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       // Generate approximate 10 queries
       val queryWorkload = dataprep.generateQueryWorkload(workloadSize)
 
-      var factory = new SamplingIcebergCube(spark, rawTableName, dataprep.totalCount)
+      var cubeFactory = new SamplingIcebergCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      var cubeTable = factory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
+      val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+      val outPutPath = new Path(globalSamTableOutputLocation)
+      if (fs.exists(outPutPath)) fs.delete(outPutPath, true)
+      twoTables._2.saveAsObjectFile(globalSamTableOutputLocation)
 
-      cubeTable.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
+      var cubeDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableOutputLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      var globalSamRdd = spark.sparkContext.objectFile[SimplePoint](globalSamTableOutputLocation)
 
-      cubeTable = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableOutputLocation)
-      cubeTable = cubeTable.persist(StorageLevel.MEMORY_AND_DISK_SER)
 
-      println("iceberg cell percent = " + cubeTable.count() * 1.0 / dataprep.totalPredicateCount + "total cells = " + dataprep.totalPredicateCount)
+      println("iceberg cell percent = " + cubeDf.count() * 1.0 / dataprep.totalPredicateCount + "total cells = " + dataprep.totalPredicateCount)
 
+      val cubeLoader = new CubeLoader(Seq(cubeDf), globalSamRdd)
       var elapsedTime: Long = 0
       var loss = 0.0
       queryWorkload.foreach(f => {
         var startingTime = Calendar.getInstance().getTimeInMillis
-        var sample = factory.searchCube(cubeTable, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])
+        var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
         loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
@@ -167,22 +183,30 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       // Generate approximate 10 queries
       val queryWorkload = dataprep.generateQueryWorkload(workloadSize)
 
-      var factory = new Tabula(spark, rawTableName, dataprep.totalCount)
+      var cubeFactory = new Tabula(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
 
-      var twoTables = factory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
-      twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
-      twoTables._2.write.mode(SaveMode.Overwrite).option("header", "true").csv(sampleTableOutputLocation)
+      var threeTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
+      threeTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
+      threeTables._2.write.mode(SaveMode.Overwrite).option("header", "true").csv(sampleTableOutputLocation)
+      val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+      val outPutPath = new Path(globalSamTableOutputLocation)
+      if (fs.exists(outPutPath)) fs.delete(outPutPath, true)
+      threeTables._3.saveAsObjectFile(globalSamTableOutputLocation)
 
       var cubeDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableOutputLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
       var sampleDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(sampleTableOutputLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      var globalSamRdd = spark.sparkContext.objectFile[SimplePoint](globalSamTableOutputLocation)
+
+      val cubeLoader = new CubeLoader(Seq(cubeDf, sampleDf), globalSamRdd)
 
       println("iceberg cells percent " + cubeDf.count() * 1.0 / dataprep.totalPredicateCount + " total cells " + dataprep.totalPredicateCount + " stored cells percent " + sampleDf.count() * 1.0 / dataprep.totalPredicateCount)
       var elapsedTime: Long = 0
       var loss = 0.0
+
       queryWorkload.foreach(f => {
         var startingTime = Calendar.getInstance().getTimeInMillis
-        var sample = factory.searchCube(cubeDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampleDf)
+        var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
         loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
@@ -202,22 +226,27 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       // Generate approximate 10 queries
       val queryWorkload = dataprep.generateQueryWorkload(workloadSize)
 
-      var factory = new TabulaNoSamS(spark, rawTableName, dataprep.totalCount)
+      var cubeFactory = new TabulaNoSamS(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      var cubeTable = factory.buildCubeNoSamS(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
+      var twoTables = cubeFactory.buildCubeNoSamS(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
 
-      cubeTable.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
+      twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
+      val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+      val outPutPath = new Path(globalSamTableOutputLocation)
+      if (fs.exists(outPutPath)) fs.delete(outPutPath, true)
+      twoTables._2.saveAsObjectFile(globalSamTableOutputLocation)
 
-      cubeTable = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableOutputLocation)
-      cubeTable = cubeTable.persist(StorageLevel.MEMORY_AND_DISK_SER)
+      var cubeDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableOutputLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      var globalSamRdd = spark.sparkContext.objectFile[SimplePoint](globalSamTableOutputLocation)
 
-      println("iceberg cell percent = " + cubeTable.count() * 1.0 / dataprep.totalPredicateCount + "total cells = " + dataprep.totalPredicateCount)
+      println("iceberg cell percent = " + cubeDf.count() * 1.0 / dataprep.totalPredicateCount + "total cells = " + dataprep.totalPredicateCount)
 
+      val cubeLoader = new CubeLoader(Seq(cubeDf), globalSamRdd)
       var elapsedTime: Long = 0
       var loss = 0.0
       queryWorkload.foreach(f => {
         var startingTime = Calendar.getInstance().getTimeInMillis
-        var sample = factory.searchCube(cubeTable, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])
+        var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
         if (calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)>=0) loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)

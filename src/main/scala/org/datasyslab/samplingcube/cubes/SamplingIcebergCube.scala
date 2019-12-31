@@ -15,9 +15,11 @@
  */
 package org.datasyslab.samplingcube.cubes
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions.lit
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.datasyslab.samplingcube.algorithms.FindCombinations
+import org.datasyslab.samplingcube.utils.SimplePoint
 
 class SamplingIcebergCube(sparkSession: SparkSession, inputTableName: String, totalCount: Long)
   extends BaseCube(sparkSession, inputTableName, totalCount) {
@@ -30,7 +32,7 @@ class SamplingIcebergCube(sparkSession: SparkSession, inputTableName: String, to
     * @param qualityAttribute
     * @return
     */
-def buildCube(cubedAttributes: Seq[String], sampledAttribute: String, qualityAttribute: String, icebergThresholds: Seq[Double], payload: String): DataFrame = {
+def buildCube(cubedAttributes: Seq[String], sampledAttribute: String, qualityAttribute: String, icebergThresholds: Seq[Double], payload: String): Tuple2[DataFrame, RDD[SimplePoint]] = {
   this.globalSample = drawGlobalSample(sampledAttribute, qualityAttribute, icebergThresholds(0))
   val cubedAttributesString = cubedAttributes.mkString(",")
 //  val samplingFunctionString = generateSamplingFunction(sampledAttribute, sampleBudget)
@@ -50,6 +52,7 @@ def buildCube(cubedAttributes: Seq[String], sampledAttribute: String, qualityAtt
       else cubeDf = cubeDf.union(groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, qualityAttribute, samplingFunctionString, icebergThresholds, nullAttributes, payload, true))
     }
   }
-  return cubeDf.withColumn(payloadColName,lit(""))//.repartition(sparkSession.table(inputTableName).rdd.getNumPartitions).withColumn(payloadColName,lit(s"${Seq.fill(sampleBudget)(payload).mkString("")}"))
+  return (cubeDf.withColumn(payloadColName,lit(""))//.repartition(sparkSession.table(inputTableName).rdd.getNumPartitions).withColumn(payloadColName,lit(s"${Seq.fill(sampleBudget)(payload).mkString("")}"))
+    , sparkSession.table(tempTableNameGLobalSample).rdd.map(f => f.getAs[SimplePoint](0)))
 }
 }
