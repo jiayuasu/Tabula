@@ -15,9 +15,9 @@
  */
 package org.datasyslab.samplingcube.cubes
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.datasyslab.samplingcube.utils.{CommonFunctions, SimplePoint}
 
 

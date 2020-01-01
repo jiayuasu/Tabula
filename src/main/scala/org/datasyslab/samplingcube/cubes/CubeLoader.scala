@@ -17,8 +17,8 @@
 package org.datasyslab.samplingcube.cubes
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.{DataFrame, Row}
 import org.datasyslab.samplingcube.utils.{CommonFunctions, SimplePoint}
 
 
