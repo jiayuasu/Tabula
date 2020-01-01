@@ -47,7 +47,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
 
       var factory = new SampleFirst(spark, rawTableName, sampleBudget, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      factory.build(sampledAttribute)
+      factory.build()
 
       var elapsedTime: Long = 0
       var loss = 0.0

@@ -58,8 +58,8 @@ class SamplingCube(sparkSession: SparkSession, inputTableName: String, totalCoun
       var nullAttributes: Seq[String] = Seq()
       cubedAttributes.toSet.filterNot(notNullAttributes.toSet).foreach(f => nullAttributes = nullAttributes :+ f.asInstanceOf[String])
       logger.info(cubeLogPrefix + "null attributes are " + nullAttributes.mkString(","))
-      if (cubeDf == null) cubeDf = groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, null, nullAttributes, payload, false)
-      else cubeDf = cubeDf.union(groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, null, nullAttributes, payload, false))
+      if (cubeDf == null) cubeDf = groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, InvalidLossValue, nullAttributes, payload, false)
+      else cubeDf = cubeDf.union(groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, InvalidLossValue, nullAttributes, payload, false))
     }
   }
   return (cubeDf.withColumn(payloadColName,lit(""))//.repartition(sparkSession.table(inputTableName).rdd.getNumPartitions).withColumn(payloadColName,lit(s"${Seq.fill(sampleBudget)(payload).mkString("")}"))
