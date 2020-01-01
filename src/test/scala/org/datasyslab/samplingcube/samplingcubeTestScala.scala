@@ -27,8 +27,7 @@ class samplingcubeTestScala extends testSettings {
   var rawTableName = "inputdf"
   var sampleBudget = 10
   var sampledAttribute = "pickup"
-  var qualityAttribute = "pickup"
-  var icebergThresholds = Seq(0.005, 0.005)
+  var icebergThreshold: Double = 0.005
   var cubedAttributes = Seq("vendor_name", "Passenger_Count")
 
   describe("Sampling cube builder test") {
@@ -38,13 +37,13 @@ class samplingcubeTestScala extends testSettings {
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = cubedAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation, true)
       dataprep.totalCount = inputDf.count()
 
       var cubeFactory = new SamplingCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
 
-      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThreshold, dataprep.payload)
       twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
       val outPutPath = new Path(globalSamTableOutputLocation)
@@ -69,13 +68,13 @@ class samplingcubeTestScala extends testSettings {
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true).limit(10000)
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation, true).limit(10000)
       dataprep.totalCount = inputDf.count()
 
       var cubeFactory = new SamplingIcebergCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
 
-      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThreshold, dataprep.payload)
       twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
       val outPutPath = new Path(globalSamTableOutputLocation)
@@ -100,13 +99,13 @@ class samplingcubeTestScala extends testSettings {
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute, predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.totalCount = inputDf.count()
 
       var cubeFactory = new Tabula(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
 
-      var threeTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
+      var threeTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThreshold, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
       threeTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       threeTables._2.write.mode(SaveMode.Overwrite).option("header", "true").csv(sampleTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
@@ -133,14 +132,14 @@ class samplingcubeTestScala extends testSettings {
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute, predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true)
       dataprep.totalCount = inputDf.count()
 
       inputDf.createOrReplaceTempView(rawTableName)
 
       var cubeFactory = new Tabula(spark, rawTableName, dataprep.totalCount)
-      cubeFactory.drawGlobalSample(sampledAttribute, qualityAttribute, icebergThresholds(0))
-      cubeFactory.dryrunWithEuclidean(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds)
+      cubeFactory.drawGlobalSample(sampledAttribute)
+      cubeFactory.dryrunWithEuclidean(dataprep.cubeAttributes, sampledAttribute, icebergThreshold)
 
     }
   }

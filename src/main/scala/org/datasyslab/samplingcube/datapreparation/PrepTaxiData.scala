@@ -27,7 +27,7 @@ class PrepTaxiData extends BasePrep with CommonFunctions {
   cubeAttributes = Seq("vendor_name", "pickup_weekday", "Passenger_Count", "Payment_Type", "Rate_Code")
   payload = ""
 
-  override def prep(dataFrame: DataFrame, sampledAttribute: String, qualityAttribute: String, predicateDfLocation:String, dropRedundant:Boolean, inputPath:String): DataFrame = {
+  override def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation:String, dropRedundant:Boolean, inputPath:String): DataFrame = {
     val columnNames = Seq("vendor_name", "pickup_weekday", "dropoff_weekday", "Passenger_Count", "Trip_Distance", "pickup", "Rate_Code", "store_and_forward"
       , "dropoff", "Payment_Type", "Fare_Amt", "surcharge", "mta_tax", "Tip_Amt", "Tolls_Amt", "Total_Amt")
     val predicateDfName = DigestUtils.md5Hex((inputPath+cubeAttributes.mkString("")).getBytes)
@@ -53,7 +53,7 @@ class PrepTaxiData extends BasePrep with CommonFunctions {
     newDf
   }
 
-  override def prep(dataFrame: DataFrame, sampledAttribute: String, qualityAttribute: String, predicateDfLocation: String, dropRedundant: Boolean): DataFrame = {
-    prep(dataFrame, sampledAttribute, qualityAttribute, predicateDfLocation, dropRedundant, "")
+  override def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation: String, dropRedundant: Boolean): DataFrame = {
+    prep(dataFrame, sampledAttribute, predicateDfLocation, dropRedundant, "")
   }
 }

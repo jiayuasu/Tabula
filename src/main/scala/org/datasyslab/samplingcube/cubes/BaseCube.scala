@@ -15,22 +15,27 @@
  */
 package org.datasyslab.samplingcube.cubes
 
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.StringType
-import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.datasyslab.samplingcube.utils.{CommonFunctions, SimplePoint}
 
+
+/**
+  *
+  * @param sparkSession SparkSession
+  * @param inputTableName the name of the input data table. Will be used to obtain the table object
+  * @param totalCount the total number of rows in the input table
+  */
 class BaseCube(var sparkSession: SparkSession, var inputTableName: String, var totalCount: Long) extends CommonFunctions {
   var globalSample: Array[SimplePoint] = null
 
   /**
     * Draw a sample on the global data and calculate global sample loss, global data measure
-    *
     * @param sampledAttribute
-    * @param qualityAttribute
     * @return
     */
-  def drawGlobalSample(sampledAttribute: String, qualityAttribute: String, threshold: Double): Array[SimplePoint] = {
+  def drawGlobalSample(sampledAttribute: String): Array[SimplePoint] = {
     // Draw sample
     val error  = 0.05
     val confidence = 0.01
@@ -45,7 +50,19 @@ class BaseCube(var sparkSession: SparkSession, var inputTableName: String, var t
     return globalSample
   }
 
-  def groupByCuboid(input:DataFrame, groupByAttributes:Seq[String], qualityAttribute: String, samplingFunctionString:String, icebergThresholds: Seq[Double], nullAttributes:Seq[String]
+  /**
+    * Build a cuboid using the system default GroupBy query
+    * @param input
+    * @param groupByAttributes
+    * @param sampledAttribute
+    * @param samplingFunctionString
+    * @param icebergThreshold
+    * @param nullAttributes
+    * @param payload
+    * @param removeIceberg
+    * @return
+    */
+  def groupByCuboid(input:DataFrame, groupByAttributes:Seq[String], sampledAttribute: String, samplingFunctionString:String, icebergThreshold: Double, nullAttributes:Seq[String]
                     ,payload:String, removeIceberg:Boolean):DataFrame = {
     val sparkSession = input.sparkSession
     input.createOrReplaceTempView(tempTableNameGroupByForSample)
@@ -53,10 +70,10 @@ class BaseCube(var sparkSession: SparkSession, var inputTableName: String, var t
     var sqlString = ""
     if (removeIceberg) {
       sqlString = s"""
-                     |SELECT $groupByAttributeString, $samplingFunctionString AS $cubeSampleColName, CB_MergeSpatial($qualityAttribute) AS $cubeRawdataColName
+                     |SELECT $groupByAttributeString, $samplingFunctionString AS $cubeSampleColName, CB_MergeSpatial($sampledAttribute) AS $cubeRawdataColName
                      |FROM $tempTableNameGroupByForSample
                      |GROUP BY $groupByAttributeString
-                     |HAVING ${generateLossConditionString(cubeRawdataColName, globalSample.mkString(","), icebergThresholds(0), ">")}
+                     |HAVING ${generateLossConditionString(cubeRawdataColName, globalSample.mkString(","), icebergThreshold, ">")}
       """.stripMargin
     }
     else {//, '${Seq.fill(sampleBudget)(payload).mkString("")}' AS $payloadColName

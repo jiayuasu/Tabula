@@ -28,7 +28,7 @@ trait BasePrep {
     return queryPredicateDf.rdd.takeSample(false, approxNumQueries, System.currentTimeMillis()).map(_.toSeq)//.sample(true, approxNumQueries * 1.0 / totalPredicateCount).collect().map(_.toSeq)
   }
 
-  def prep(dataFrame: DataFrame, sampledAttribute: String, qualityAttribute: String, predicateDfLocation:String, dropRedundant:Boolean, rawInputPath:String): DataFrame
+  def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation:String, dropRedundant:Boolean, rawInputPath:String): DataFrame
 
-  def prep(dataFrame: DataFrame, sampledAttribute: String, qualityAttribute: String, predicateDfLocation:String, dropRedundant:Boolean): DataFrame
+  def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation:String, dropRedundant:Boolean): DataFrame
 }

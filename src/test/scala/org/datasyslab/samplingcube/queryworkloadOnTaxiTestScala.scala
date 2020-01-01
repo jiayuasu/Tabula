@@ -30,8 +30,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
   var rawTableName = "inputdf"
   var sampleBudget = 100
   var sampledAttribute = "pickup"
-  var qualityAttribute = "pickup"
-  var icebergThresholds = Seq(0.005, 0.005)
+  var icebergThreshold = 0.005
 
   describe("Query workload generator on taxi test") {
 
@@ -39,7 +38,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -48,7 +47,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
 
       var factory = new SampleFirst(spark, rawTableName, sampleBudget, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      factory.build(qualityAttribute)
+      factory.build(sampledAttribute)
 
       var elapsedTime: Long = 0
       var loss = 0.0
@@ -57,7 +56,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
         var sample = factory.search(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute)
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -67,7 +66,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, false).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, false).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -81,10 +80,10 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var loss = 0.0
       queryWorkload.foreach(f => {
         var startingTime = Calendar.getInstance().getTimeInMillis
-        var sample = factory.search(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, icebergThresholds)
+        var sample = factory.search(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, icebergThreshold)
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -94,7 +93,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -104,7 +103,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var cubeFactory = new SamplingCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
 
-      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThreshold, dataprep.payload)
       twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
       val outPutPath = new Path(globalSamTableOutputLocation)
@@ -126,7 +125,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
         var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -136,7 +135,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -145,7 +144,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
 
       var cubeFactory = new SamplingIcebergCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      val twoTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThreshold, dataprep.payload)
       twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
       val outPutPath = new Path(globalSamTableOutputLocation)
@@ -166,7 +165,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
         var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -176,7 +175,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -186,7 +185,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var cubeFactory = new Tabula(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
 
-      var threeTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
+      var threeTables = cubeFactory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThreshold, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
       threeTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       threeTables._2.write.mode(SaveMode.Overwrite).option("header", "true").csv(sampleTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
@@ -209,7 +208,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
         var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -219,7 +218,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -228,7 +227,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
 
       var cubeFactory = new TabulaNoSamS(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      var twoTables = cubeFactory.buildCubeNoSamS(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
+      var twoTables = cubeFactory.buildCubeNoSamS(dataprep.cubeAttributes, sampledAttribute, icebergThreshold, cubeTableOutputLocation, dataprep.queryPredicateDf, dataprep.payload)
 
       twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
@@ -249,7 +248,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
         var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        if (calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)>=0) loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        if (calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)>=0) loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)

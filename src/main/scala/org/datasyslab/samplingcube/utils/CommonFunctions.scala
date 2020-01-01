@@ -163,6 +163,14 @@ trait CommonFunctions extends GlobalVariables with SerializableUdf {
     finalDf
   }
 
+  /**
+    * Given a cuboid, if [Cost(Prune) + Cost(GroupBy on PrunedData) < CostGroupAllData], then Tabula first filters the input table, then run GroupBy
+    * on the remaining data. If this does not hold, Tabula will simply run a GroupBy on the entire input table
+    * @param totalCount the number of rows in the input data table
+    * @param icebergcells the number of iceberg cells in the cube which is derived from the input table
+    * @param allcells the number of cells in the cube which is derived from the input table
+    * @return
+    */
   def pruneFirstCondition(totalCount:Long, icebergcells:Long, allcells:Long):Boolean = {
     var percent = icebergcells*1.0/allcells
     var pruneCost = totalCount*(icebergcells + percent*logarithmFunc(allcells, percent*totalCount))

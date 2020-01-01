@@ -50,7 +50,7 @@ class CubeLoader(inputCubeTables:Seq[DataFrame],globalSampleRdd: RDD[SimplePoint
     *
     * @param cubedAttributes The number of attriutes that are used to construct the cube
     * @param attributeValues The exact values that are put in the predicate
-    * @return
+    * @return a sample which is an array of points. But it is serialized to a single string.
     */
   def searchCube(cubedAttributes: Seq[String], attributeValues: Seq[String]): Tuple2[String, String] = {
     var cubeTable = filterDataframe(inputCubeTables.head, cubedAttributes, attributeValues, true)

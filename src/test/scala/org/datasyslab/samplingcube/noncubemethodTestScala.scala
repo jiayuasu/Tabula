@@ -34,12 +34,12 @@ class noncubemethodTestScala extends testSettings {
 
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true)
       dataprep.totalCount = inputDf.count()
 
       var factory = new SampleFirst(spark, rawTableName, sampleBudget, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      factory.build(qualityAttribute)
+      factory.build()
       factory.sampleDf.show()
       var predicates = Seq("VTS", "1")
       var sample = factory.search(cubedAttributes, predicates, sampledAttribute)
@@ -57,13 +57,13 @@ class noncubemethodTestScala extends testSettings {
 
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, sampledAttribute,predicateDfLocation, false)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, false)
       dataprep.totalCount = inputDf.count()
 
       var factory = new SampleLater(spark, rawTableName, sampleBudget)
       inputDf.createOrReplaceTempView(rawTableName)
       var predicates = Seq("VTS", "1")
-      var sample = factory.search(cubedAttributes, predicates, sampledAttribute, Seq(0.01, 0.01))
+      var sample = factory.search(cubedAttributes, predicates, sampledAttribute, 0.01)
       println(sample.deep.mkString(", "))
     }
   }

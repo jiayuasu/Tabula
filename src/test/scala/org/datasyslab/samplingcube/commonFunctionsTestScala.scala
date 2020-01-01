@@ -27,7 +27,6 @@ class commonFunctionsTestScala extends testSettings with CommonFunctions {
   var rawTableName = "inputdf"
   var sampleBudget = 100
   var sampledAttribute = "pickup"
-  var qualityAttribute = "pickup"
   var icebergThresholds = Seq(0.1, 0.1)
 
   describe("CommonFunctions function test") {
@@ -36,7 +35,7 @@ class commonFunctionsTestScala extends testSettings with CommonFunctions {
     //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
     val dataprep = new PrepTaxiData
     dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-    inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, false)
+    inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, false)
     inputDf.createOrReplaceTempView("CommonFunctionsTable")
 
     inputDf.show()
@@ -45,7 +44,7 @@ class commonFunctionsTestScala extends testSettings with CommonFunctions {
     var predicates = dataprep.queryPredicateDf.take(10)(2).toSeq.map(f => f.asInstanceOf[String])
 
     it(s"Passed calculateFinalLoss") {
-      println("calculateFinalLoss " + calculateFinalLoss(inputDf, dataprep.cubeAttributes, predicates, qualityAttribute, "1.0 1.0,1.0 1.0,5.0 5.0,9.0 9.0,9.0 9.0"))
+      println("calculateFinalLoss " + calculateFinalLoss(inputDf, dataprep.cubeAttributes, predicates, sampledAttribute, "1.0 1.0,1.0 1.0,5.0 5.0,9.0 9.0,9.0 9.0"))
     }
 
     it(s"Passed generateLossConditionString") {

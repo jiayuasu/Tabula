@@ -31,15 +31,14 @@ class queryworkloadOnFlightTestScala extends testSettings {
   var rawTableName = "inputdf"
   var sampleBudget = 1000
   var sampledAttribute = "AIR_TIME"
-  var qualityAttribute = "AIR_TIME"
-  var icebergThresholds = Seq(0.1, 0.1)
+  var icebergThresholds = 0.1
 
   describe("Query workload generator on flight test") {
     it("Passed query workload generation step on SampleFirst") {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation,true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation,true)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -48,7 +47,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
 
       var factory = new SampleFirst(spark, rawTableName, sampleBudget, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      factory.build(qualityAttribute)
+      factory.build(sampledAttribute)
 
       var elapsedTime: Long = 0
       var loss = 0.0
@@ -57,7 +56,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
         var sample = factory.search(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute)
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -67,7 +66,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -84,7 +83,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
         var sample = factory.search(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, icebergThresholds)
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -94,7 +93,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation,true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation,true)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -103,7 +102,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
 
       var factory = new SamplingCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      var twoTables = factory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      var twoTables = factory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThresholds, dataprep.payload)
 
       twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
@@ -122,7 +121,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
         var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)
@@ -132,7 +131,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, qualityAttribute,predicateDfLocation,true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation,true)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -141,7 +140,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
 
       var factory = new SamplingIcebergCube(spark, rawTableName, dataprep.totalCount)
       inputDf.createOrReplaceTempView(rawTableName)
-      var twoTables = factory.buildCube(dataprep.cubeAttributes, sampledAttribute, qualityAttribute, icebergThresholds, dataprep.payload)
+      var twoTables = factory.buildCube(dataprep.cubeAttributes, sampledAttribute, icebergThresholds, dataprep.payload)
 
       twoTables._1.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableOutputLocation)
       val fs = FileSystem.get(spark.sparkContext.hadoopConfiguration)
@@ -162,7 +161,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
         var sample = cubeLoader.searchCube(dataprep.cubeAttributes, f.asInstanceOf[Seq[String]])._2
         var endingTime = Calendar.getInstance().getTimeInMillis
         elapsedTime += endingTime - startingTime
-        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], qualityAttribute, sample)(0)
+        loss += calculateFinalLoss(inputDf, dataprep.cubeAttributes, f.asInstanceOf[Seq[String]], sampledAttribute, sample)(0)
       })
       var avgtimeInterval = elapsedTime / queryWorkload.size
       println(s"avg search time of ${queryWorkload.size} queries =" + avgtimeInterval + " avg final sample loss = " + loss / queryWorkload.length)

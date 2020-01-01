@@ -28,30 +28,52 @@ import org.datasyslab.samplingcube.utils.SimplePoint
 
 import scala.collection.JavaConverters._
 
+/**
+  *
+  * @param sparkSession SparkSession
+  * @param inputTableName the name of the input data table. Will be used to obtain the table object
+  * @param totalCount the total number of rows in the input table
+  */
 class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Long)
   extends BaseCube(sparkSession: SparkSession, inputTableName: String, totalCount: Long) {
   var lastDryRunEndTime:Long = 0
   var lastRealRunEndTime:Long = 0
+
   /**
-    * Build the pre-cube table. The pre cube table will have sample, local data measure, local sample measure
+    * Build the partially materialized sampling cube using the dry-run algorithm and sample selection technique
     *
-    * @param cubedAttributes
-    * @param sampledAttribute
-    * @param qualityAttribute
-    * @return
+    * @param cubedAttributes The attributes that are put in the CUBE operator. It looks like this: GROUP BY CUBE(attribute 1, attribute 2)
+    * @param sampledAttribute The attribute on which we run SAMPLING function and compute the accuracy loss
+    * @param icebergThreshold The threshold which we use to determine iceberg cells
+    * @param cubeTableLocation The path on which a temporary table will be stored. The dry run stage will produce a temporary table. Theoretically,
+    *                          this is just an in-memory intermediate data. However, due to a bug in SparkSQL, this temp table must be persisted on
+    *                          disk and loaded back to Spark. Otherwise, the queries that depend on this table will take forever.
+    * @param predicateDf The table which contains all cells in the cube which is derived from the input table. This should be done in the data preparation
+    *                    phase. SparkSQL can easily produce this table using its original CUBE operator with a COUNT aggregate.
+    * @param payload The payload is used to simulate the other attributes in the table and such that we can do stress tests
+    * @return The cube tables (in a DataFrame type) and the global sample (in a RDD type)
+    *         The cube tables incude two tables, 1 cube table and 1 sample table This happends in Tabula.
+    *         The cube table without any actual sample
+    *         Weekday Payment ID
+    *         1  cash  1
+    *         2  credit  2
+    *         The sample table which only contains the id and corresponding sample
+    *         ID sample
+    *         1  (point, point, point, ...)
+    *         2  (point, point, point, ...)
     */
-  def buildCube(cubedAttributes: Seq[String], sampledAttribute: String, qualityAttribute: String, icebergThresholds: Seq[Double], cubeTableLocation: String, predicateDf:DataFrame
+  def buildCube(cubedAttributes: Seq[String], sampledAttribute: String, icebergThreshold: Double, cubeTableLocation: String, predicateDf:DataFrame
                ,payload:String): Tuple3[DataFrame, DataFrame, RDD[SimplePoint]] = {
     lastDryRunEndTime = 0
     lastRealRunEndTime = 0
-    this.globalSample = drawGlobalSample(sampledAttribute, qualityAttribute, icebergThresholds(0))
+    this.globalSample = drawGlobalSample(sampledAttribute)
     val cubedAttributesString = cubedAttributes.mkString(",")
 //    val samplingFunctionString = generateSamplingFunction(sampledAttribute, sampleBudget)
-    val samplingFunctionString = generateSamplingFunction(sampledAttribute, icebergThresholds(0))
+    val samplingFunctionString = generateSamplingFunction(sampledAttribute, icebergThreshold)
     /** ****************************************
       * Stage 1: Dry run stage
       * ****************************************/
-    var dryrunDf = dryrunWithEuclidean(cubedAttributes, sampledAttribute, qualityAttribute, icebergThresholds)
+    var dryrunDf = dryrunWithEuclidean(cubedAttributes, sampledAttribute, icebergThreshold)
 //    logger.info(cubeLogPrefix + s"dryrun find iceberg cells ${dryrunDf.count()}")
     // Persist the dryrun result on disk because Spark has a bug that will lead to infinite loop
     dryrunDf.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableLocation + "-" + tempTableNameDryrun)
@@ -70,7 +92,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
     for (i <- 1 to cubedAttributes.size) {
       // Find several cuboids
       val cuboids = FindCombinations.find(cubedAttributes, cubedAttributes.size, i)
-      for (j <- 0 to (cuboids.size -1) ) {
+      for (j <- cuboids.indices ) {
         var icebergDf = dryrunDf
         // Check whether this cuboid has iceberg cells
         val notNullAttributes = cuboids(j).split(",")
@@ -97,15 +119,15 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
           logger.info(cubeLogPrefix+"filter then build a cuboid")
           // This cuboid just has a few iceberg cells. We can first filter out useless data and then group by.
           var filteredDf = sparkSession.table(inputTableName).join(icebergDf, notNullAttributes)
-          if (realRunResultDf == null) realRunResultDf = groupByCuboid(filteredDf, notNullAttributes, qualityAttribute, samplingFunctionString, icebergThresholds, nullAttributes,payload, true)
-          else realRunResultDf = realRunResultDf.union(groupByCuboid(filteredDf, notNullAttributes, qualityAttribute, samplingFunctionString, icebergThresholds, nullAttributes, payload, true))
+          if (realRunResultDf == null) realRunResultDf = groupByCuboid(filteredDf, notNullAttributes, sampledAttribute, samplingFunctionString, icebergThreshold, nullAttributes,payload, true)
+          else realRunResultDf = realRunResultDf.union(groupByCuboid(filteredDf, notNullAttributes, sampledAttribute, samplingFunctionString, icebergThreshold, nullAttributes, payload, true))
           filterThenGroupBy = filterThenGroupBy+1
         }
         else {
           logger.info(cubeLogPrefix+"build a cuboid")
           // This cuboid needs a full GroupBy
-          if (realRunResultDf == null) realRunResultDf = groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, qualityAttribute, samplingFunctionString, icebergThresholds, nullAttributes, payload, true)
-          else realRunResultDf = realRunResultDf.union(groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, qualityAttribute, samplingFunctionString, icebergThresholds, nullAttributes, payload, true))
+          if (realRunResultDf == null) realRunResultDf = groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, icebergThreshold, nullAttributes, payload, true)
+          else realRunResultDf = realRunResultDf.union(groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, icebergThreshold, nullAttributes, payload, true))
         }
       }
     }
@@ -119,7 +141,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
     /** ****************************************
       * Stage 3: Sample selection stage
       * ****************************************/
-    var selectedEdges = sampleSelection(realRunResultDf, icebergThresholds, cubedAttributes)
+    var selectedEdges = sampleSelection(realRunResultDf, icebergThreshold, cubedAttributes)
 
     val selectedEdgesSchema = new StructType()
       .add(cubeTableIdName, LongType)
@@ -141,7 +163,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
   }
 
 
-  private def sampleSelection(cubeTable: DataFrame, icebergThresholds: Seq[Double], cubeAttributes:Seq[String]): util.List[Row] = {
+  private def sampleSelection(cubeTable: DataFrame, icebergThreshold: Double, cubeAttributes:Seq[String]): util.List[Row] = {
     var cubeTable1 = cubeTable
     // Drop all useless column for the self join, reduce the partition number to a reasonable no.
     cubeTable1 = cubeTable1.select(cubeTableIdName, cubeRawdataColName, cubeSampleColName).repartition(Math.pow(cubeAttributes.size, 2).toInt)
@@ -150,11 +172,10 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
     var cubeTable2 = cubeTable1.toDF(newColNames: _*).drop(cubeRawdataColName+"2")
     cubeTable1 = cubeTable1.drop(cubeSampleColName)
     // Control the number of edges.
-    var final_thresholds: Seq[Double] = (globalSampleLoss zip icebergThresholds).map { case (gLoss, iThreshold) => threshold(gLoss, Seq(iThreshold, samGraphSizeControl)) }
     /**
       * Use equality join to build the sample selection graph for euclidean metric
       */
-    var sampleGraph = equalityJoin(cubeTable1, cubeTable2, final_thresholds)
+    var sampleGraph = equalityJoin(cubeTable1, cubeTable2, icebergThreshold)
 //    logger.warn(cubeLogPrefix+"samgraph edges are "+sampleGraph.count())
     sampleGraph.createOrReplaceTempView(samGraphTableName)
     sampleGraph = sparkSession.sql(
@@ -167,7 +188,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
     return edges
   }
 
-  def dryrunWithEuclidean(cubedAttributes: Seq[String], sampledAttribute: String, qualityAttribute: String, icebergThresholds: Seq[Double]): DataFrame = {
+  def dryrunWithEuclidean(cubedAttributes: Seq[String], sampledAttribute: String, icebergThreshold: Double): DataFrame = {
 //    this.globalSample = drawGlobalSample(sampledAttribute, qualityAttribute, icebergThresholds(0))
     var cubedAttributesString = cubedAttributes.mkString(",")
     var globalSampleString = globalSample.mkString(",")
@@ -189,11 +210,11 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
       s"""
         |SELECT $cubedAttributesString, (${cubeLocalMeasureName(0)+"sum"}/${cubeLocalMeasureName(0)+"count"}) AS ${cubeLocalMeasureName(0)}
         |FROM ${tempTableNameDryrun+"intermediatetable"}
-      """.stripMargin).filter(s"${cubeLocalMeasureName(0)} > ${icebergThresholds(0)}")
+      """.stripMargin).filter(s"${cubeLocalMeasureName(0)} > ${icebergThreshold}")
     dryrunDf
   }
 
-  def equalityJoin(cubeTable1:DataFrame, cubeTable2:DataFrame, final_thresholds:Seq[Double]):DataFrame = {
-    cubeTable1.as("df1").join(cubeTable2.as("df2"), expr(s"CB_EuclideanLoss_Spatial(df1.${cubeRawdataColName}, df2.${cubeSampleColName}2) <= ${final_thresholds(0)}"))
+  def equalityJoin(cubeTable1:DataFrame, cubeTable2:DataFrame, final_threshold: Double):DataFrame = {
+    cubeTable1.as("df1").join(cubeTable2.as("df2"), expr(s"CB_EuclideanLoss_Spatial(df1.${cubeRawdataColName}, df2.${cubeSampleColName}2) <= ${final_threshold}"))
   }
 }

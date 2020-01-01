@@ -19,13 +19,20 @@ import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.apache.spark.storage.StorageLevel
 import org.datasyslab.samplingcube.utils.{CommonFunctions, SerializableUdf, SimplePoint}
 
+/**
+  * Construct a SampleFirst class
+  * @param sparkSession
+  * @param inputTableName the input data table
+  * @param sampleBudget the number of records in the sample
+  * @param totalCount the total number of rows in the input data table
+  */
 class SampleFirst(var sparkSession: SparkSession, var inputTableName: String, var sampleBudget: Int, var totalCount: Long) extends SerializableUdf with CommonFunctions {
   var sampleDf: DataFrame = null
 
   /**
     * Build a global sample
     */
-  def build(qualityAttribute: String): DataFrame = {
+  def build(): DataFrame = {
     // Draw sample
     sampleDf = sparkSession.table(inputTableName).sample(true, sampleBudget * 1.0 / totalCount).limit(sampleBudget).persist(StorageLevel.MEMORY_AND_DISK_SER)
     sampleDf.createOrReplaceTempView(tempTableNameGLobalSample)
@@ -35,9 +42,9 @@ class SampleFirst(var sparkSession: SparkSession, var inputTableName: String, va
   /**
     * Search on the sample
     *
-    * @param queryAttributes
-    * @param attributeValues
-    * @param sampledAttribute
+    * @param queryAttributes The number of attriutes that are used to construct the cube
+    * @param attributeValues The exact values that are put in the predicate
+    * @param sampledAttribute The attribute on which we run SAMPLING function and compute the accuracy loss
     * @return
     */
   def search(queryAttributes: Seq[String], attributeValues: Seq[String], sampledAttribute: String): Array[SimplePoint] = {

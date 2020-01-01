@@ -26,7 +26,7 @@ class datapreparationTestScala extends testSettings {
       //var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry-nonull/yellow_tripdata*")
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, "Fare_Amt", "Fare_Amt",predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, "Fare_Amt", predicateDfLocation, true)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -68,7 +68,7 @@ class datapreparationTestScala extends testSettings {
       //var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load("/hdd2/data/flights.csv")
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, "AIR_TIME", "AIR_TIME",predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, "AIR_TIME", predicateDfLocation, true)
       //inputDf.show()
       dataprep.totalCount = inputDf.count()
 
