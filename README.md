@@ -70,7 +70,9 @@ We provide a [driver program](https://github.com/DataSystemsLab/Tabula/blob/mast
 1. Clone this repo
 2. Open `pom.xml` and make sure the value of `env.package` is `compile`. It should look like `<env.package>compile</env.package>`
 3. Open `Driver.scala` and make sure the value of SparkSession's attribute `master` is `local[*]`. It should look like `.master("local[*]")`
-4. Run this `Driver.scala`
+4. Run this `Driver.scala` with one argument `build` or `search`
+	1. `build` will create a new Tabula partially materialized sampling cube
+	2. `search` will start a query that search Tabula sampling cube
 
 #### Run in Spark cluster
 
@@ -78,7 +80,7 @@ We provide a [driver program](https://github.com/DataSystemsLab/Tabula/blob/mast
 2. Open `pom.xml` and make sure the value of `env.package` is `provided`. It should look like `<env.package> provided </env.package>`
 3. Open `Driver.scala` and make sure the value of SparkSession's attribute `master` is `local[*]` is disabled. This line `.master("local[*]")` should be commentted out.
 4. Run `mvn clean install -DskipTests` in the terminal
-5. Submit the compiled fat jar to Spark cluster using `./bin/spark-submit` command
+5. Submit the compiled fat jar to Spark cluster using `./bin/spark-submit` command, with an argument `build` or `search`
 
 
 ## Publications
