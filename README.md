@@ -1,8 +1,8 @@
-# Tabula: Accelerating Spatial Data Visualization Dashboards via a Materialized Sampling Approach
+# Tabula: Turbocharging Geospatial Visualization Dashboards via a Materialized Sampling Cube Approach
 
 [![Build Status](https://travis-ci.org/DataSystemsLab/Tabula.svg?branch=master)](https://travis-ci.org/DataSystemsLab/Tabula)
 
-## Spatial data visualization dashboard
+## Geospatial data visualization dashboard
 
 <img style="float: left;" src="figures/tableau-dashboard.png" width="400"><img src="figures/tableau-interaction.gif" width="400">
 
@@ -61,6 +61,30 @@ FROM SamplingCube
 WHERE Trip_distance = 1 AND Payment_method = 'cash'
 ```
 
+### Driver program
+
+We provide a [driver program](https://github.com/DataSystemsLab/Tabula/blob/master/src/main/scala/org/datasyslab/samplingcube/Driver.scala) in this repo to illustrate the usage of Tabula.
+
+#### Run in IDE
+
+1. Clone this repo
+2. Open `pom.xml` and make sure the value of `env.package` is `compile`. It should look like `<env.package>compile</env.package>`
+3. Open `Driver.scala` and make sure the value of SparkSession's attribute `master` is `local[*]`. It should look like `.master("local[*]")`
+4. Run this `Driver.scala`
+
+#### Run in Spark cluster
+
+1. Clone this repo
+2. Open `pom.xml` and make sure the value of `env.package` is `provided`. It should look like `<env.package> provided </env.package>`
+3. Open `Driver.scala` and make sure the value of SparkSession's attribute `master` is `local[*]` is disabled. This line `.master("local[*]")` should be commentted out.
+4. Run `mvn clean install -DskipTests` in the terminal
+5. Submit the compiled fat jar to Spark cluster using `./bin/spark-submit` command
+
+
+## Publications
+
+Jia Yu and Mohamed Sarwat. **Turbocharging Geospatial Visualization Dashboards via a Materialized Sampling Cube Approach**. In Proceedings of the International Conference on Data Engineering, ICDE, page to appear, 2020 ([PDF](https://jiayuasu.github.io/files/paper/tabula_icde2020_fullpaper.pdf))
+
 ## Implementation details
 
 1. Currently, Tabula is implemented on top of Apache SparkSQL 2.3. In the future, we will show how to extend Tabula to more data systems such as PostgreSQL.
@@ -71,6 +95,9 @@ WHERE Trip_distance = 1 AND Payment_method = 'cash'
 
 ## Contributors
 
-[Jia Yu](http://www.public.asu.edu/~jiayu2/)
+[Jia Yu](http://jiayuasu.github.io/) (jiayu2@asu.edu)
 
-[Mohamed Sarwat](http://faculty.engineering.asu.edu/sarwat/)
+[Mohamed Sarwat](http://faculty.engineering.asu.edu/sarwat/) (msarwat@asu.edu)
+
+## Data Systems Lab @ ASU
+Tabula middleware system is one of the projects under [Data Systems Lab](https://www.datasyslab.net/) at Arizona State University. The mission of DataSys Lab is designing and developing experimental data management systems (e.g., database systems).
