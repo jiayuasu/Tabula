@@ -27,7 +27,7 @@ class samplingcubeTestScala extends testSettings {
   var rawTableName = "inputdf"
   var sampleBudget = 10
   var sampledAttribute = "pickup"
-  var icebergThreshold: Double = 0.005
+  var icebergThreshold: Double = 0.002
   var cubedAttributes = Seq("vendor_name", "Passenger_Count")
 
   describe("Sampling cube builder test") {
