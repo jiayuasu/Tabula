@@ -37,7 +37,7 @@ class samplingcubeTestScala extends testSettings {
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = cubedAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation)
       dataprep.totalCount = inputDf.count()
 
       var cubeFactory = new SamplingCube(spark, rawTableName, dataprep.totalCount)
@@ -67,8 +67,8 @@ class samplingcubeTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
-      dataprep.cubeAttributes = dataprep.cubeAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation, true).limit(10000)
+      dataprep.cubeAttributes = cubedAttributes
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation).limit(10000)
       dataprep.totalCount = inputDf.count()
 
       var cubeFactory = new SamplingIcebergCube(spark, rawTableName, dataprep.totalCount)
@@ -98,8 +98,8 @@ class samplingcubeTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
-      dataprep.cubeAttributes = dataprep.cubeAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      dataprep.cubeAttributes = cubedAttributes
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.totalCount = inputDf.count()
 
       var cubeFactory = new Tabula(spark, rawTableName, dataprep.totalCount)
@@ -132,7 +132,7 @@ class samplingcubeTestScala extends testSettings {
       //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation)
       dataprep.totalCount = inputDf.count()
 
       inputDf.createOrReplaceTempView(rawTableName)

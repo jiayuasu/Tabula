@@ -38,7 +38,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -66,7 +66,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, false).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -93,7 +93,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -135,7 +135,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -175,7 +175,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation).limit(10000).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -218,7 +218,7 @@ class queryworkloadOnTaxiTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load(nyctaxiInputLocation)
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true).persist(StorageLevel.MEMORY_AND_DISK_SER)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation).persist(StorageLevel.MEMORY_AND_DISK_SER)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 

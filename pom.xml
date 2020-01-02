@@ -39,7 +39,7 @@
         <scala.compat.version>2.11</scala.compat.version>
         <geotools.version>17.0</geotools.version>
         <spark.version>2.3.2</spark.version>
-        <env.package>provided</env.package>
+        <env.package>compile</env.package>
     </properties>
 
     <dependencies>

@@ -74,7 +74,6 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
       * Stage 1: Dry run stage
       * ****************************************/
     var dryrunDf = dryrunWithEuclidean(cubedAttributes, sampledAttribute, icebergThreshold)
-//    logger.info(cubeLogPrefix + s"dryrun find iceberg cells ${dryrunDf.count()}")
     // Persist the dryrun result on disk because Spark has a bug that will lead to infinite loop
     dryrunDf.write.mode(SaveMode.Overwrite).option("header", "true").csv(cubeTableLocation + "-" + tempTableNameDryrun)
     lastDryRunEndTime = Calendar.getInstance().getTimeInMillis
@@ -82,7 +81,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
       * Stage 2: Real run stage. Find all cuboids that can be ignored
       * ****************************************/
     dryrunDf = sparkSession.read.format("csv").option("delimiter", ",").option("header", "true").load(cubeTableLocation + "-" + tempTableNameDryrun).persist(StorageLevel.MEMORY_ONLY)
-    println("dryrun find iceberg cells "+dryrunDf.count())
+    logger.info(cubeLogPrefix + "[Dry-run stage] Found iceberg cells "+dryrunDf.count())
     // Find all cuboids that need a true GroupBy
     var realRunResultDf:DataFrame = null
 
@@ -96,14 +95,13 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
         var icebergDf = dryrunDf
         // Check whether this cuboid has iceberg cells
         val notNullAttributes = cuboids(j).split(",")
-        logger.info(cubeLogPrefix+"checking cuboid "+cuboids(j))
         notNullAttributes.foreach(f=> {
           icebergDf = icebergDf.filter(col(f).isNotNull)
         })
 
         var nullAttributes:Seq[String] = Seq()
         cubedAttributes.toSet.filterNot(notNullAttributes.toSet).foreach(f=>nullAttributes = nullAttributes:+f.asInstanceOf[String])
-        logger.info(cubeLogPrefix+"null attributes are "+nullAttributes.mkString(","))
+        logger.info(cubeLogPrefix+s"[Real-run stage] Now checking where cuboid ${cuboids(j)} (${nullAttributes.mkString(",")} = NULL) has iceberg cells...")
 
         nullAttributes.foreach(f=>{
           icebergDf = icebergDf.filter(col(f).isNull)
@@ -112,11 +110,11 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
         if (icebergcellCount == 0) {
           // This cuboid can be skipped because it has no iceberg cells
           requiredGroupbys = requiredGroupbys - 1
-          logger.info(cubeLogPrefix+"skip a cuboid")
+          logger.info(cubeLogPrefix+s"[Real-run stage] Skip cuboid ${cuboids(j)} because it has no iceberg cells")
         }
         else if (pruneFirstCondition(totalCount, icebergcellCount, predicateDf.groupBy(notNullAttributes.head, notNullAttributes.tail:_*).count().count()))
         {
-          logger.info(cubeLogPrefix+"filter then build a cuboid")
+          logger.info(cubeLogPrefix+s"[Real-run stage] Filter the input table then build cuboid ${cuboids(j)}")
           // This cuboid just has a few iceberg cells. We can first filter out useless data and then group by.
           var filteredDf = sparkSession.table(inputTableName).join(icebergDf, notNullAttributes)
           if (realRunResultDf == null) realRunResultDf = groupByCuboid(filteredDf, notNullAttributes, sampledAttribute, samplingFunctionString, icebergThreshold, nullAttributes,payload, true)
@@ -124,14 +122,14 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
           filterThenGroupBy = filterThenGroupBy+1
         }
         else {
-          logger.info(cubeLogPrefix+"build a cuboid")
+          logger.info(cubeLogPrefix+s"[Real-run stage] Build cuboid ${cuboids(j)} using a complete GroupBy")
           // This cuboid needs a full GroupBy
           if (realRunResultDf == null) realRunResultDf = groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, icebergThreshold, nullAttributes, payload, true)
           else realRunResultDf = realRunResultDf.union(groupByCuboid(sparkSession.table(inputTableName), notNullAttributes, sampledAttribute, samplingFunctionString, icebergThreshold, nullAttributes, payload, true))
         }
       }
     }
-    println(s"required groupby: ${requiredGroupbys} filterThenGroupby $filterThenGroupBy all groupby ${Math.pow(2, cubedAttributes.size)}")
+    logger.info(cubeLogPrefix+s"[Real-run stage] Found iceberg cuboids: ${requiredGroupbys.toInt} (FilterThenGroupby $filterThenGroupBy); All cuboids in the complete cube: ${Math.pow(2, cubedAttributes.size).toInt}")
 
     // Append unique id to each sample, repartition to reduce the crazy number of partitions caused by union
     realRunResultDf = realRunResultDf.withColumn(cubeTableIdName, monotonically_increasing_id())//.persist(StorageLevel.MEMORY_AND_DISK_SER)
@@ -157,7 +155,7 @@ class Tabula(sparkSession: SparkSession, inputTableName: String, totalCount: Lon
     var sampleTable = realRunResultDf.as("df1").join(selectedEdgesDf.select(repre_id_prefix + cubeTableIdName).distinct().as("df2"), expr(s"df1.$cubeTableIdName == df2.${repre_id_prefix + cubeTableIdName}"))
       .withColumn(payloadColName,lit("")).select(s"df1.$cubeTableIdName", cubeSampleColName, payloadColName)
 
-    logger.info(cubeLogPrefix + "final sample table count " + sampleTable.count())
+    logger.info(cubeLogPrefix + s"[Table normalization] Normalized cube tables: cube table (count: ${cubeTable.count()}); sample table (count: ${sampleTable.count()})")
 
     return (cubeTable, sampleTable, sparkSession.table(tempTableNameGLobalSample).rdd.map(f => f.getAs[SimplePoint](0)))//.withColumn(cubeSampleColName, stringify(col(cubeSampleColName))))
   }

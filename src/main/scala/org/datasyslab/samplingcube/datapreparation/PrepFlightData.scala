@@ -25,7 +25,7 @@ class PrepFlightData extends BasePrep with CommonFunctions {
   cubeAttributes = Seq("DAY_OF_WEEK", "AIRLINE")
   payload = ""
   //cubeAttributes = Seq("DAY_OF_WEEK", "AIRLINE", "FLIGHT_NUMBER", "ORIGIN_AIRPORT", "DESTINATION_AIRPORT")
-  override def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation:String, dropRedundant:Boolean, inputPath:String): DataFrame = {
+  override def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation:String, inputPath:String): DataFrame = {
     var newDf = dataFrame //.persist(StorageLevel.MEMORY_AND_DISK_SER)
     val predicateDfName = DigestUtils.md5Hex((inputPath+cubeAttributes.mkString("")).getBytes)
     // Get total count
@@ -45,7 +45,7 @@ class PrepFlightData extends BasePrep with CommonFunctions {
     newDf
   }
 
-  override def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation: String, dropRedundant: Boolean): DataFrame = {
-    prep(dataFrame, sampledAttribute, predicateDfLocation, dropRedundant, "")
+  override def prep(dataFrame: DataFrame, sampledAttribute: String, predicateDfLocation: String): DataFrame = {
+    prep(dataFrame, sampledAttribute, predicateDfLocation, "")
   }
 }

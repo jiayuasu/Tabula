@@ -35,7 +35,7 @@ class commonFunctionsTestScala extends testSettings with CommonFunctions {
     //      var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "false").load("/hdd/data/nyc-geometry/yellow_tripdata_2009-01_geometry.csv")
     val dataprep = new PrepTaxiData
     dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-    inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, false)
+    inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation)
     inputDf.createOrReplaceTempView("CommonFunctionsTable")
 
     inputDf.show()

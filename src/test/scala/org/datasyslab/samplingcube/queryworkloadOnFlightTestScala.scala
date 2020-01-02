@@ -38,7 +38,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation,true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute,predicateDfLocation)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -66,7 +66,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -93,7 +93,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation,true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 
@@ -131,7 +131,7 @@ class queryworkloadOnFlightTestScala extends testSettings {
       var inputDf = spark.read.format("csv").option("delimiter", ",").option("header", "true").load(fligtInputLocation)
       val dataprep = new PrepFlightData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation,true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation)
       dataprep.queryPredicateDf.show()
       dataprep.totalCount = inputDf.count()
 

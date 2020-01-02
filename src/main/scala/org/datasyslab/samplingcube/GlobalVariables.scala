@@ -20,7 +20,7 @@ trait GlobalVariables {
   val InvalidMeasureValue: Double = -999999.9999
   val InvalidLossValue: Double = -999999.9999
   val InvalidTime: Long = -1
-  val cubeLogPrefix = "[SamplingCube] "
+  val cubeLogPrefix = "[Tabula] "
   val cubeTableIdName = "id"
   val cubeSampleColName = "sample"
   val cubeRawdataColName = "rawdata"

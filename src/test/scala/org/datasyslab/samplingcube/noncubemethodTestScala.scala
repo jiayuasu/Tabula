@@ -34,7 +34,7 @@ class noncubemethodTestScala extends testSettings {
 
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, true)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation)
       dataprep.totalCount = inputDf.count()
 
       var factory = new SampleFirst(spark, rawTableName, sampleBudget, dataprep.totalCount)
@@ -57,7 +57,7 @@ class noncubemethodTestScala extends testSettings {
 
       val dataprep = new PrepTaxiData
       dataprep.cubeAttributes = dataprep.cubeAttributes.take(numCubedAttributes)
-      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation, false)
+      inputDf = dataprep.prep(inputDf, sampledAttribute, predicateDfLocation)
       dataprep.totalCount = inputDf.count()
 
       var factory = new SampleLater(spark, rawTableName, sampleBudget)

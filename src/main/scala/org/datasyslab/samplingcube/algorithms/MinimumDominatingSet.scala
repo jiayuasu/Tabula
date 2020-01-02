@@ -23,8 +23,8 @@ import scala.collection.mutable
 object MinimumDominatingSet extends CommonFunctions {
 
   def GreedyAlgorithm(edges: Array[Row]): mutable.Iterable[Row] = {
+    logger.info(cubeLogPrefix + s"[Sample selection stage] Build the SamGraph for Representative Sample Selection")
     var uncoveredNodes = new mutable.HashMap[Long, Node]()
-    logger.info(cubeLogPrefix + s"Build samGraph for the greedy algorithm")
     edges.foreach(f => {
       try {
         uncoveredNodes += (f.getString(0).toLong -> new Node(f.getString(0).toLong, mutable.HashSet(f.getString(1).split(",").map(g => g.toLong).toList: _*)))
@@ -58,18 +58,18 @@ object MinimumDominatingSet extends CommonFunctions {
         // Record the selected nodes
         visitedNodes += maxNode._1
 
-          logger.info(cubeLogPrefix + s"Select Node ${maxNode._1} outdegree ${maxNode._2.uncoveredOutgoingEdges.size}")
+        logger.info(cubeLogPrefix + s"[Sample selection stage] Select Node ${maxNode._1} outdegree ${maxNode._2.uncoveredOutgoingEdges.size}")
         // Update the uncovered outgoing edges in uncoveredNodes
         uncoveredNodes = uncoveredNodes.map(keyNode => {
           var cursorNode = keyNode._2
           var edges = cursorNode.uncoveredOutgoingEdges
-          logger.debug(cubeLogPrefix + "before updating the outdegree:" + edges.size)
+          logger.debug(cubeLogPrefix + "[Sample selection stage] Before updating the outdegree:" + edges.size)
 
           maxNode._2.uncoveredOutgoingEdges.foreach(coveredTail => {
             edges.remove(coveredTail)
           })
           cursorNode = new Node(cursorNode.id, edges)
-          logger.debug(cubeLogPrefix + "after updating the outdegree:" + edges.size)
+          logger.debug(cubeLogPrefix + "[Sample selection stage] After updating the outdegree:" + edges.size)
           (keyNode._1 -> cursorNode)
         })
 
@@ -80,8 +80,7 @@ object MinimumDominatingSet extends CommonFunctions {
         }
       }
     }
-    logger.info(cubeLogPrefix + s"selected nodes ${visitedNodes.size}")
-    println(s"selected nodes ${visitedNodes.size}")
+    logger.info(cubeLogPrefix + s"[Sample selection stage] ${visitedNodes.size} iceberg cells are selected to be materialized")
     // Return all final representations
     visitedEdges.map(f => Row(f._1, f._2))
   }
