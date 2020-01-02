@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Jia Yu (jiayu2@asu.edu)
+ * Copyright (c) 2019 - 2020 Data Systems Lab at Arizona State University
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
